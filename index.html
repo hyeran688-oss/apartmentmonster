@@ -1,0 +1,1977 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>아파트 탈출 대작전: 주챙이를 구해라!</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+      overflow-x: hidden;
+    }
+    .font-jua {
+      font-family: 'Jua', sans-serif;
+    }
+    #gameContainer {
+      position: relative;
+      width: 100%;
+      max-width: 960px;
+      aspect-ratio: 16 / 9;
+      margin: 0 auto;
+      border-radius: 1rem;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 0 3px #334155;
+      background: #1e293b;
+    }
+    @media (max-width: 640px) {
+      #gameContainer {
+        aspect-ratio: 4 / 3;
+        border-radius: 0.75rem;
+      }
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .overlay-screen {
+      transition: opacity 0.2s ease;
+    }
+    .overlay-hidden {
+      display: none !important;
+      pointer-events: none !important;
+    }
+    .btn-arcade {
+      transition: transform 0.08s ease, box-shadow 0.08s ease, background-color 0.08s ease;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+    .btn-arcade:active,
+    .btn-arcade.is-pressed {
+      transform: translateY(3px) scale(0.96);
+      filter: brightness(1.15);
+    }
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+    }
+    .animate-float {
+      animation: floatSlow 2.5s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-2 sm:p-4 bg-gradient-to-b from-slate-950 via-slate-900 to-indigo-950">
+
+  <!-- 상단 타이틀 및 사운드 토글 바 -->
+  <header class="w-full max-w-[960px] flex items-center justify-between mb-2 px-1">
+    <div class="flex items-center gap-2">
+      <span class="px-2.5 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-bold">ACTION ARCADE</span>
+      <h1 class="font-jua text-lg sm:text-2xl text-white tracking-wide drop-shadow">아파트 탈출 대작전: <span class="text-amber-400">주챙이를 구해라!</span></h1>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="muteBtn" type="button" class="btn-arcade px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow">
+        <span id="muteIcon">🔊</span>
+        <span id="muteText" class="hidden sm:inline">효과음 ON</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 메인 게임 캔버스 컨테이너 -->
+  <main id="gameContainer">
+    <canvas id="gameCanvas" tabindex="0"></canvas>
+
+    <!-- 1. 타이틀 오버레이 화면 -->
+    <div id="titleOverlay" class="overlay-screen absolute inset-0 bg-slate-950/85 backdrop-blur-sm flex flex-col items-center justify-center p-4 sm:p-6 text-center z-20">
+      <div class="animate-float mb-3">
+        <span class="inline-block px-3 py-1 rounded-full bg-rose-500/20 border border-rose-400 text-rose-300 text-xs sm:text-sm font-bold mb-2">
+          🏢 던전형 아파트 탈출 액션 게임
+        </span>
+        <h2 class="font-jua text-3xl sm:text-5xl text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-rose-400 drop-shadow-lg">
+          아파트 탈출 대작전!
+        </h2>
+        <p class="font-jua text-lg sm:text-2xl text-sky-300 mt-1">~ 부미아 꼭대기의 주챙이를 구출하라 ~</p>
+      </div>
+
+      <!-- 캐릭터 요약 카드 -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-xl my-4 text-left">
+        <div class="bg-slate-900/90 border border-slate-700 rounded-2xl p-3.5 flex items-center gap-3">
+          <canvas id="previewHyechaeng" width="64" height="64" class="w-14 h-14 rounded-xl bg-sky-950/60 border border-sky-500/30 shrink-0"></canvas>
+          <div>
+            <div class="font-jua text-base sm:text-lg text-amber-300">주인공: 혜챙이</div>
+            <p class="text-xs text-slate-300 leading-relaxed">슬리퍼 에너지 파동으로 아파트 괴물을 물리치고 주챙이를 구하러 출동!</p>
+          </div>
+        </div>
+        <div class="bg-slate-900/90 border border-slate-700 rounded-2xl p-3.5 flex items-center gap-3">
+          <canvas id="previewJuchaeng" width="64" height="64" class="w-14 h-14 rounded-xl bg-indigo-950/60 border border-indigo-500/30 shrink-0"></canvas>
+          <div>
+            <div class="font-jua text-base sm:text-lg text-emerald-300">구출 목표: 주챙이</div>
+            <p class="text-xs text-slate-300 leading-relaxed">부미아(부암미주아파트) 옥상에 갇혀 혜챙이를 기다리고 있다!</p>
+          </div>
+        </div>
+      </div>
+
+      <button id="startBtn" type="button" class="btn-arcade font-jua text-xl sm:text-2xl px-9 py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 text-slate-950 font-bold shadow-lg shadow-orange-500/30 hover:brightness-110 mt-1">
+        🚀 게임 시작
+      </button>
+    </div>
+
+    <!-- 2. 스테이지 전환 / 클리어 오버레이 -->
+    <div id="stageTransitionOverlay" class="overlay-screen overlay-hidden absolute inset-0 bg-slate-950/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center z-20">
+      <div id="transitionBadge" class="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400 text-emerald-300 text-xs sm:text-sm font-bold mb-2">
+        STAGE CLEAR!
+      </div>
+      <h2 id="transitionTitle" class="font-jua text-3xl sm:text-4xl text-amber-300 mb-3">퀸덤아파트 격파!</h2>
+      <div class="bg-slate-900/90 border border-slate-700 rounded-2xl p-4 max-w-md w-full mb-5">
+        <p id="transitionDesc" class="text-sm sm:text-base text-slate-200 leading-relaxed">
+          혜챙이: "영어로 아무리 말해봤자 내 슬리퍼 파동은 못 막지! 다음 아파트로 가자!"
+        </p>
+      </div>
+      <button id="nextStageBtn" type="button" class="btn-arcade font-jua text-lg sm:text-xl px-7 py-3 rounded-2xl bg-gradient-to-r from-emerald-400 to-teal-500 text-slate-950 font-bold shadow-lg">
+        다음 스테이지로 돌격! ➔
+      </button>
+    </div>
+
+    <!-- 3. 게임 오버 / 최종 엔딩 오버레이 -->
+    <div id="endOverlay" class="overlay-screen overlay-hidden absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-30">
+      <div id="endEmoji" class="text-5xl sm:text-6xl mb-2 animate-bounce">🎉</div>
+      <h2 id="endTitle" class="font-jua text-3xl sm:text-5xl text-amber-300 mb-2">주챙이 구출 성공!!</h2>
+      <p id="endSubtitle" class="text-sm sm:text-base text-slate-200 max-w-lg mb-3 leading-relaxed">
+        부미아(부암미주아파트) 괴물을 물리치고 옥상에 갇혀 있던 주챙이를 무사히 구출했습니다!
+      </p>
+      <!-- 혜챙이 & 주챙이 얼싸안고 와이~~~~ 로맨틱 애니메이션 캔버스 -->
+      <div id="romanticSceneWrapper" class="hidden mb-3">
+        <canvas id="romanticHugCanvas" width="320" height="160" class="w-72 sm:w-80 h-36 sm:h-40 rounded-2xl bg-gradient-to-b from-rose-950/90 via-pink-900/70 to-amber-950/80 border-2 border-pink-400/60 shadow-lg shadow-pink-500/20 mx-auto"></canvas>
+      </div>
+      <div id="endDialogueBox" class="bg-slate-900 border border-slate-700 rounded-2xl p-4 max-w-md w-full mb-4 text-left space-y-2 text-xs sm:text-sm">
+        <div class="text-sky-300 font-bold">👦 주챙이: "혜챙아! 진짜 구하러 와줬구나! 고마워 ㅠㅠ"</div>
+        <div class="text-amber-300 font-bold">👧 혜챙이: "당연하지! 이제 이 무시무시한 아파트 단지에서 탈출하자!"</div>
+      </div>
+      <div class="flex gap-3">
+        <button id="restartBtn" type="button" class="btn-arcade font-jua text-lg sm:text-xl px-7 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 font-bold shadow-lg">
+          🔄 처음부터 다시하기
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- 하단 클릭/터치 이동 및 액션 버튼 컨트롤 바 -->
+  <section aria-label="하단 게임 조작 버튼" class="w-full max-w-[960px] mt-3 px-2 py-2.5 rounded-2xl bg-slate-900/90 border border-slate-700/80 shadow-xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 z-10">
+    <!-- 왼쪽: 좌/우 이동 버튼 -->
+    <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center sm:justify-start">
+      <button id="btnLeft" type="button" class="btn-arcade flex-1 sm:flex-initial px-4 sm:px-5 h-14 rounded-2xl bg-slate-800 hover:bg-slate-700 border-2 border-slate-500 font-jua text-base sm:text-lg text-white flex items-center justify-center gap-1.5 shadow-lg" aria-label="왼쪽 이동">
+        <span class="text-amber-300">◀</span>
+        <span>왼쪽 이동</span>
+      </button>
+      <button id="btnRight" type="button" class="btn-arcade flex-1 sm:flex-initial px-4 sm:px-5 h-14 rounded-2xl bg-slate-800 hover:bg-slate-700 border-2 border-slate-500 font-jua text-base sm:text-lg text-white flex items-center justify-center gap-1.5 shadow-lg" aria-label="오른쪽 이동">
+        <span>오른쪽 이동</span>
+        <span class="text-amber-300">▶</span>
+      </button>
+    </div>
+
+    <!-- 오른쪽: 점프 & 공격(슬리퍼 샷) 버튼 -->
+    <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-center sm:justify-end">
+      <button id="btnJump" type="button" class="btn-arcade flex-1 sm:flex-initial px-5 sm:px-6 h-14 rounded-2xl bg-sky-600 hover:bg-sky-500 border-2 border-sky-300 font-jua text-base sm:text-lg text-white shadow-lg flex items-center justify-center gap-1.5" aria-label="점프">
+        <span>▲</span>
+        <span>점프</span>
+      </button>
+      <button id="btnAttack" type="button" class="btn-arcade flex-1 sm:flex-initial px-5 sm:px-6 h-14 rounded-2xl bg-rose-600 hover:bg-rose-500 border-2 border-rose-300 font-jua text-base sm:text-lg text-white shadow-lg flex items-center justify-center gap-1.5" aria-label="공격 슬리퍼 샷">
+        <span>💥</span>
+        <span>공격 (슬리퍼 샷)</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- 상시 표시되는 게임 방법 & 스테이지 규칙 안내 패널 -->
+  <section aria-label="게임 방법 및 스테이지 규칙" class="w-full max-w-[960px] mt-2.5 px-3.5 py-3 rounded-2xl bg-slate-900/85 border border-slate-700/80 shadow-lg text-xs sm:text-sm z-10">
+    <div class="flex flex-wrap items-center justify-between gap-2 pb-2 mb-2 border-b border-slate-800">
+      <div class="flex items-center gap-2 font-jua text-base sm:text-lg text-amber-300">
+        <span>📖 게임 방법 & 조작법 (상시 안내)</span>
+      </div>
+      <div class="text-[11px] sm:text-xs text-slate-300 bg-slate-800/90 px-2.5 py-1 rounded-lg border border-slate-700">
+        <b>조작:</b> 위 하단 버튼 클릭/누르기 또는 키보드 <kbd class="px-1 py-0.5 bg-slate-950 rounded border border-slate-600">← → / A D</kbd> 이동 · <kbd class="px-1 py-0.5 bg-slate-950 rounded border border-slate-600">↑ / W</kbd> 점프 · <kbd class="px-1 py-0.5 bg-slate-950 rounded border border-slate-600">Space / Z</kbd> 슬리퍼 샷
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs leading-relaxed">
+      <div class="p-2.5 rounded-xl bg-amber-950/30 border border-amber-500/30">
+        <div class="font-bold text-amber-300 mb-0.5">👑 1스테이지: 퀸덤아파트</div>
+        <p class="text-slate-200">영어로만 말하는 퀸덤아파트가 소환하는 <b>킥보드·자전거 초등학생</b>을 점프로 피하면서 아파트 괴물을 공격해 물리치세요!</p>
+      </div>
+      <div class="p-2.5 rounded-xl bg-purple-950/30 border border-purple-500/30">
+        <div class="font-bold text-purple-300 mb-0.5">🔮 2스테이지: 레전드 아파트</div>
+        <p class="text-slate-200">총 <b>28개의 레전드 아파트 몸체</b>가 차례대로 나타납니다! 한 동씩 경쾌하게 물리쳐 28개를 모두 격파하세요.</p>
+      </div>
+      <div class="p-2.5 rounded-xl bg-orange-950/30 border border-orange-500/30">
+        <div class="font-bold text-orange-300 mb-0.5">🏢 3스테이지: 부미아 (주챙이 구출)</div>
+        <p class="text-slate-200">낙하 화분과 충격파를 피하며 <b>부암미주아파트</b>를 쓰러뜨리고, 옥상 철창에 갇힌 <b>주챙이</b>를 구출하면 최종 승리!</p>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    (function () {
+      // ==========================================
+      // 1. 사운드 시스템 (Web Audio API 안전 래퍼)
+      // ==========================================
+      let audioCtx = null;
+      let isMuted = false;
+      let romanticBgmInterval = null;
+
+      function initAudio() {
+        try {
+          if (!audioCtx) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (AudioContextClass) {
+              audioCtx = new AudioContextClass();
+            }
+          }
+          if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume().catch(() => {});
+          }
+        } catch (e) {
+          // 오디오 오류 발생 시 게임이 멈추지 않도록 무시
+        }
+      }
+
+      function playTone(freq, type, duration, vol = 0.12, slideFreq = null) {
+        if (isMuted) return;
+        try {
+          initAudio();
+          if (!audioCtx) return;
+          const now = audioCtx.currentTime;
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, now);
+          if (slideFreq) {
+            osc.frequency.exponentialRampToValueAtTime(Math.max(20, slideFreq), now + duration);
+          }
+          gain.gain.setValueAtTime(vol, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + duration);
+        } catch (e) {}
+      }
+
+      // 감미로운 로맨틱 오르골/피아노풍 BGM 재생 및 정지
+      function stopRomanticBGM() {
+        if (romanticBgmInterval) {
+          clearInterval(romanticBgmInterval);
+          romanticBgmInterval = null;
+        }
+      }
+
+      function startRomanticBGM() {
+        stopRomanticBGM();
+        // 서정적인 왈츠/발라드풍 멜로디 (주파수, 길이)
+        const melody = [
+          { f: 523.25, d: 0.45 }, // C5
+          { f: 659.25, d: 0.45 }, // E5
+          { f: 783.99, d: 0.65 }, // G5
+          { f: 880.00, d: 0.45 }, // A5
+          { f: 783.99, d: 0.65 }, // G5
+          { f: 659.25, d: 0.45 }, // E5
+          { f: 587.33, d: 0.45 }, // D5
+          { f: 659.25, d: 0.45 }, // E5
+          { f: 698.46, d: 0.65 }, // F5
+          { f: 659.25, d: 0.45 }, // E5
+          { f: 587.33, d: 0.45 }, // D5
+          { f: 523.25, d: 0.85 }, // C5
+          { f: 493.88, d: 0.45 }, // B4
+          { f: 587.33, d: 0.45 }, // D5
+          { f: 659.25, d: 0.65 }, // E5
+          { f: 783.99, d: 0.85 }  // G5
+        ];
+        const bassNotes = [261.63, 220.00, 174.61, 196.00]; // C3, A2, F2, G2
+        let step = 0;
+
+        const playStep = () => {
+          if (isMuted || gameState !== STATE.VICTORY) return;
+          const note = melody[step % melody.length];
+          // 부드러운 사인파 오르골 멜로디
+          playTone(note.f, 'sine', note.d * 1.4, 0.11);
+          // 은은한 화음 배음
+          playTone(note.f * 0.5, 'triangle', note.d * 1.5, 0.045);
+          // 4박자마다 따뜻한 베이스 코드
+          if (step % 4 === 0) {
+            const bass = bassNotes[Math.floor(step / 4) % bassNotes.length];
+            playTone(bass, 'sine', 1.5, 0.07);
+          }
+          step++;
+        };
+
+        playStep();
+        romanticBgmInterval = setInterval(playStep, 420);
+      }
+
+      const SFX = {
+        jump: () => playTone(260, 'square', 0.14, 0.1, 520),
+        shoot: () => playTone(580, 'triangle', 0.1, 0.12, 220),
+        hit: () => playTone(160, 'sawtooth', 0.12, 0.14, 70),
+        split: () => {
+          playTone(340, 'square', 0.08, 0.1, 680);
+          setTimeout(() => playTone(510, 'square', 0.1, 0.1, 880), 60);
+        },
+        hurt: () => playTone(140, 'sawtooth', 0.28, 0.18, 45),
+        stageClear: () => {
+          [440, 554, 659, 880].forEach((f, idx) => {
+            setTimeout(() => playTone(f, 'triangle', 0.18, 0.14), idx * 90);
+          });
+        },
+        victory: () => {
+          // 팡파르 직후 로맨틱 BGM 시작
+          [523.25, 659.25, 783.99, 1046.5].forEach((f, idx) => {
+            setTimeout(() => playTone(f, 'sine', 0.35, 0.13), idx * 120);
+          });
+          setTimeout(() => {
+            if (gameState === STATE.VICTORY) startRomanticBGM();
+          }, 520);
+        }
+      };
+
+      // ==========================================
+      // 2. DOM 요소 및 캔버스 초기화
+      // ==========================================
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+      const gameContainer = document.getElementById('gameContainer');
+
+      const titleOverlay = document.getElementById('titleOverlay');
+      const stageTransitionOverlay = document.getElementById('stageTransitionOverlay');
+      const endOverlay = document.getElementById('endOverlay');
+      const romanticSceneWrapper = document.getElementById('romanticSceneWrapper');
+      const romanticHugCanvas = document.getElementById('romanticHugCanvas');
+      const hugCtx = romanticHugCanvas ? romanticHugCanvas.getContext('2d') : null;
+      let hugHearts = [];
+
+      const startBtn = document.getElementById('startBtn');
+      const nextStageBtn = document.getElementById('nextStageBtn');
+      const restartBtn = document.getElementById('restartBtn');
+      const muteBtn = document.getElementById('muteBtn');
+      const muteIcon = document.getElementById('muteIcon');
+      const muteText = document.getElementById('muteText');
+
+      const btnLeft = document.getElementById('btnLeft');
+      const btnRight = document.getElementById('btnRight');
+      const btnJump = document.getElementById('btnJump');
+      const btnAttack = document.getElementById('btnAttack');
+
+      // 논리 해상도 고정 (960 x 540)
+      const W = 960;
+      const H = 540;
+      const GROUND_Y = 468;
+
+      function resizeCanvas() {
+        canvas.width = W;
+        canvas.height = H;
+      }
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+
+      // ==========================================
+      // 3. 캐릭터 미리보기 캔버스 렌더링 (타이틀 카드용)
+      // ==========================================
+      function drawHyechaengSprite(c, x, y, w, h, facing = 1, walkFrame = 0, attackAnim = 0) {
+        c.save();
+        c.translate(x + w / 2, y + h / 2);
+        if (facing < 0) c.scale(-1, 1);
+
+        const bounce = Math.sin(walkFrame * 0.35) * 2.5;
+
+        // 단발머리 뒷머리카락
+        c.fillStyle = '#1e1b18';
+        c.beginPath();
+        c.roundRect(-18, -24 + bounce, 36, 28, 12);
+        c.fill();
+
+        // 몸통 (노란 후드티)
+        c.fillStyle = '#fbbf24';
+        c.beginPath();
+        c.roundRect(-13, 0 + bounce, 26, 20, 6);
+        c.fill();
+        c.strokeStyle = '#d97706';
+        c.lineWidth = 1.5;
+        c.stroke();
+
+        // 바지 (청바지)
+        c.fillStyle = '#2563eb';
+        c.fillRect(-10, 18 + bounce, 8, 10);
+        c.fillRect(2, 18 + bounce, 8, 10);
+
+        // 슬리퍼 발
+        c.fillStyle = '#f43f5e';
+        c.beginPath();
+        c.roundRect(-12, 26 + bounce, 11, 5, 2);
+        c.roundRect(2, 26 + bounce, 11, 5, 2);
+        c.fill();
+
+        // 얼굴
+        c.fillStyle = '#fde68a';
+        c.beginPath();
+        c.arc(0, -10 + bounce, 13, 0, Math.PI * 2);
+        c.fill();
+
+        // 단발 앞머리 & 옆머리
+        c.fillStyle = '#1e1b18';
+        c.beginPath();
+        c.arc(0, -13 + bounce, 14, Math.PI, Math.PI * 2);
+        c.fill();
+        c.fillRect(-15, -13 + bounce, 5, 16);
+        c.fillRect(10, -13 + bounce, 5, 16);
+
+        // 머리핀 포인트
+        c.fillStyle = '#fb7185';
+        c.fillRect(-11, -18 + bounce, 6, 3);
+
+        // 눈 & 볼터치
+        c.fillStyle = '#111827';
+        c.beginPath();
+        c.arc(-4, -9 + bounce, 2, 0, Math.PI * 2);
+        c.arc(5, -9 + bounce, 2, 0, Math.PI * 2);
+        c.fill();
+
+        c.fillStyle = 'rgba(244, 63, 94, 0.45)';
+        c.beginPath();
+        c.arc(-7, -6 + bounce, 2.5, 0, Math.PI * 2);
+        c.arc(8, -6 + bounce, 2.5, 0, Math.PI * 2);
+        c.fill();
+
+        // 공격 팔 포즈
+        c.fillStyle = '#fbbf24';
+        if (attackAnim > 0) {
+          c.fillRect(10, 2 + bounce, 14, 6);
+        } else {
+          c.fillRect(9, 3 + bounce, 7, 10);
+        }
+
+        c.restore();
+      }
+
+      function drawJuchaengSprite(c, x, y, w, h, waving = 0) {
+        c.save();
+        c.translate(x + w / 2, y + h / 2);
+
+        // 머리카락
+        c.fillStyle = '#1f2937';
+        c.beginPath();
+        c.arc(0, -14, 14, Math.PI, Math.PI * 2);
+        c.fill();
+
+        // 상의 (민트 맨투맨)
+        c.fillStyle = '#34d399';
+        c.beginPath();
+        c.roundRect(-13, 0, 26, 20, 6);
+        c.fill();
+
+        // 바지
+        c.fillStyle = '#334155';
+        c.fillRect(-10, 18, 8, 11);
+        c.fillRect(2, 18, 8, 11);
+
+        // 얼굴
+        c.fillStyle = '#fde68a';
+        c.beginPath();
+        c.arc(0, -10, 12.5, 0, Math.PI * 2);
+        c.fill();
+
+        // 앞머리
+        c.fillStyle = '#1f2937';
+        c.beginPath();
+        c.arc(0, -13, 13, Math.PI * 1.05, Math.PI * 1.95);
+        c.fill();
+
+        // 안경 디테일 (그래픽 요소)
+        c.strokeStyle = '#111827';
+        c.lineWidth = 1.6;
+        c.strokeRect(-9, -13, 7, 5.5);
+        c.strokeRect(2, -13, 7, 5.5);
+        c.beginPath();
+        c.moveTo(-2, -10.5);
+        c.lineTo(2, -10.5);
+        c.stroke();
+
+        // 눈
+        c.fillStyle = '#111827';
+        c.fillRect(-6, -11, 2, 2);
+        c.fillRect(4.5, -11, 2, 2);
+
+        // 손 흔들기
+        const waveAngle = Math.sin(waving * 0.15) * 0.4;
+        c.save();
+        c.translate(13, 3);
+        c.rotate(-0.8 + waveAngle);
+        c.fillStyle = '#34d399';
+        c.fillRect(0, -3, 12, 6);
+        c.restore();
+
+        c.restore();
+      }
+
+      // 프리뷰 캔버스에 캐릭터 그리기
+      (function renderPreviews() {
+        const pH = document.getElementById('previewHyechaeng');
+        const pJ = document.getElementById('previewJuchaeng');
+        if (pH) drawHyechaengSprite(pH.getContext('2d'), 8, 6, 48, 52, 1, 0, 0);
+        if (pJ) drawJuchaengSprite(pJ.getContext('2d'), 8, 6, 48, 52, 1);
+      })();
+
+      // 혜챙이와 주챙이가 함께 얼싸안고 "와이~~~~" 하는 엔딩 모션 렌더링
+      function renderRomanticHugScene() {
+        if (!hugCtx || gameState !== STATE.VICTORY) return;
+        const cw = romanticHugCanvas.width;
+        const ch = romanticHugCanvas.height;
+        hugCtx.clearRect(0, 0, cw, ch);
+
+        // 반짝이는 별빛 & 로맨틱 후광
+        const pulse = Math.sin(frameCount * 0.08) * 6;
+        const glow = hugCtx.createRadialGradient(cw / 2, ch * 0.62, 10, cw / 2, ch * 0.62, 115 + pulse);
+        glow.addColorStop(0, 'rgba(251, 113, 133, 0.45)');
+        glow.addColorStop(0.6, 'rgba(244, 114, 182, 0.16)');
+        glow.addColorStop(1, 'rgba(244, 114, 182, 0)');
+        hugCtx.fillStyle = glow;
+        hugCtx.fillRect(0, 0, cw, ch);
+
+        // 바닥 분홍빛 카펫/언덕
+        hugCtx.fillStyle = 'rgba(255, 228, 230, 0.18)';
+        hugCtx.beginPath();
+        hugCtx.ellipse(cw / 2, ch - 12, 110, 14, 0, 0, Math.PI * 2);
+        hugCtx.fill();
+
+        // 하트 파티클 생성 및 상승 애니메이션
+        if (frameCount % 14 === 0) {
+          hugHearts.push({
+            x: cw / 2 + (Math.random() - 0.5) * 110,
+            y: ch - 35,
+            vy: -(0.8 + Math.random() * 0.8),
+            size: 10 + Math.random() * 8,
+            alpha: 1,
+            sway: Math.random() * Math.PI * 2
+          });
+        }
+        for (let i = hugHearts.length - 1; i >= 0; i--) {
+          const ht = hugHearts[i];
+          ht.y += ht.vy;
+          ht.x += Math.sin(frameCount * 0.06 + ht.sway) * 0.5;
+          ht.alpha -= 0.012;
+          if (ht.alpha <= 0) {
+            hugHearts.splice(i, 1);
+            continue;
+          }
+          hugCtx.save();
+          hugCtx.globalAlpha = Math.max(0, ht.alpha);
+          hugCtx.font = `${Math.round(ht.size)}px sans-serif`;
+          hugCtx.textAlign = 'center';
+          hugCtx.fillText('💖', ht.x, ht.y);
+          hugCtx.restore();
+        }
+
+        // 얼싸안고 덩실덩실 흔들리는 모션 계산
+        const swayAngle = Math.sin(frameCount * 0.1) * 0.07;
+        const bounceY = Math.abs(Math.sin(frameCount * 0.1)) * -4;
+
+        hugCtx.save();
+        hugCtx.translate(cw / 2, ch * 0.65 + bounceY);
+        hugCtx.rotate(swayAngle);
+
+        // 왼쪽: 주챙이 (오른쪽을 바라보며 혜챙이를 안음)
+        hugCtx.save();
+        hugCtx.translate(-15, 0);
+        // 머리카락
+        hugCtx.fillStyle = '#1f2937';
+        hugCtx.beginPath();
+        hugCtx.arc(0, -14, 14, Math.PI, Math.PI * 2);
+        hugCtx.fill();
+        // 몸통
+        hugCtx.fillStyle = '#34d399';
+        hugCtx.beginPath();
+        hugCtx.roundRect(-13, 0, 26, 22, 6);
+        hugCtx.fill();
+        // 바지
+        hugCtx.fillStyle = '#334155';
+        hugCtx.fillRect(-10, 20, 8, 12);
+        hugCtx.fillRect(2, 20, 8, 12);
+        // 얼굴 (살짝 기울여 맞댐)
+        hugCtx.fillStyle = '#fde68a';
+        hugCtx.beginPath();
+        hugCtx.arc(2, -10, 12.5, 0, Math.PI * 2);
+        hugCtx.fill();
+        // 앞머리
+        hugCtx.fillStyle = '#1f2937';
+        hugCtx.beginPath();
+        hugCtx.arc(2, -13, 13, Math.PI * 1.05, Math.PI * 1.95);
+        hugCtx.fill();
+        // 안경 & 행복한 웃음 눈 (^ ^)
+        hugCtx.strokeStyle = '#111827';
+        hugCtx.lineWidth = 1.6;
+        hugCtx.strokeRect(-5, -13, 6.5, 5.5);
+        hugCtx.strokeRect(4, -13, 6.5, 5.5);
+        hugCtx.beginPath();
+        hugCtx.moveTo(1.5, -10.5);
+        hugCtx.lineTo(4, -10.5);
+        hugCtx.stroke();
+        // 홍조
+        hugCtx.fillStyle = 'rgba(244, 63, 94, 0.55)';
+        hugCtx.beginPath();
+        hugCtx.arc(7, -6, 3, 0, Math.PI * 2);
+        hugCtx.fill();
+        // 혜챙이 어깨를 감싸 안은 팔
+        hugCtx.fillStyle = '#34d399';
+        hugCtx.beginPath();
+        hugCtx.roundRect(6, 4, 22, 7, 4);
+        hugCtx.fill();
+        hugCtx.restore();
+
+        // 오른쪽: 혜챙이 (왼쪽을 바라보며 주챙이를 꼭 껴안음)
+        hugCtx.save();
+        hugCtx.translate(15, 2);
+        // 단발 뒷머리
+        hugCtx.fillStyle = '#1e1b18';
+        hugCtx.beginPath();
+        hugCtx.roundRect(-18, -24, 36, 28, 12);
+        hugCtx.fill();
+        // 몸통 (노란 후드)
+        hugCtx.fillStyle = '#fbbf24';
+        hugCtx.beginPath();
+        hugCtx.roundRect(-13, 0, 26, 20, 6);
+        hugCtx.fill();
+        // 바지 & 슬리퍼
+        hugCtx.fillStyle = '#2563eb';
+        hugCtx.fillRect(-10, 18, 8, 10);
+        hugCtx.fillRect(2, 18, 8, 10);
+        hugCtx.fillStyle = '#f43f5e';
+        hugCtx.beginPath();
+        hugCtx.roundRect(-12, 26, 11, 5, 2);
+        hugCtx.roundRect(2, 26, 11, 5, 2);
+        hugCtx.fill();
+        // 얼굴
+        hugCtx.fillStyle = '#fde68a';
+        hugCtx.beginPath();
+        hugCtx.arc(-2, -10, 12.5, 0, Math.PI * 2);
+        hugCtx.fill();
+        // 단발 앞머리 & 머리핀
+        hugCtx.fillStyle = '#1e1b18';
+        hugCtx.beginPath();
+        hugCtx.arc(-2, -13, 13.5, Math.PI, Math.PI * 2);
+        hugCtx.fill();
+        hugCtx.fillRect(9, -13, 5, 16);
+        hugCtx.fillStyle = '#fb7185';
+        hugCtx.fillRect(5, -18, 6, 3);
+        // 행복한 눈웃음 & 홍조
+        hugCtx.strokeStyle = '#111827';
+        hugCtx.lineWidth = 1.8;
+        hugCtx.beginPath();
+        hugCtx.arc(-6, -9, 2.5, Math.PI, Math.PI * 2);
+        hugCtx.stroke();
+        hugCtx.fillStyle = 'rgba(244, 63, 94, 0.55)';
+        hugCtx.beginPath();
+        hugCtx.arc(-7, -6, 3, 0, Math.PI * 2);
+        hugCtx.fill();
+        // 주챙이를 꼭 껴안은 팔
+        hugCtx.fillStyle = '#fbbf24';
+        hugCtx.beginPath();
+        hugCtx.roundRect(-26, 5, 22, 7, 4);
+        hugCtx.fill();
+        hugCtx.restore();
+
+        hugCtx.restore();
+
+        // 상단 "와이~~~~ 💕" 말풍선 애니메이션
+        const textScale = 1 + Math.sin(frameCount * 0.14) * 0.06;
+        hugCtx.save();
+        hugCtx.translate(cw / 2, 28);
+        hugCtx.scale(textScale, textScale);
+
+        hugCtx.fillStyle = '#fff1f2';
+        hugCtx.beginPath();
+        hugCtx.roundRect(-86, -16, 172, 30, 15);
+        hugCtx.fill();
+        hugCtx.strokeStyle = '#fb7185';
+        hugCtx.lineWidth = 2.5;
+        hugCtx.stroke();
+
+        hugCtx.fillStyle = '#e11d48';
+        hugCtx.font = 'bold 17px "Jua", sans-serif';
+        hugCtx.textAlign = 'center';
+        hugCtx.fillText('와이~~~~ 💕', 0, 5);
+        hugCtx.restore();
+      }
+
+      // ==========================================
+      // 4. 게임 상태 및 엔티티 변수 초기화
+      // ==========================================
+      const STATE = {
+        TITLE: 'TITLE',
+        PLAYING: 'PLAYING',
+        TRANSITION: 'TRANSITION',
+        VICTORY: 'VICTORY',
+        GAMEOVER: 'GAMEOVER'
+      };
+
+      let gameState = STATE.TITLE;
+      let currentStage = 1;
+      let frameCount = 0;
+      let screenShake = 0;
+      let victoryLockTimer = 0;
+      let rescueSceneTimer = 0;
+      let rescuedJuchaeng = null;
+
+      // 주인공 혜챙이 객체
+      const player = {
+        x: 100,
+        y: GROUND_Y - 56,
+        w: 44,
+        h: 56,
+        vx: 0,
+        vy: 0,
+        speed: 4.8,
+        jumpPower: -13.2,
+        gravity: 0.62,
+        onGround: true,
+        facing: 1,
+        hp: 100,
+        maxHp: 100,
+        invuln: 0,
+        attackCooldown: 0,
+        attackAnim: 0,
+        walkFrame: 0
+      };
+
+      // Stage 1 퀸덤아파트 영어 대사 목록
+      const QUEENDOM_ENGLISH_LINES = [
+        'Welcome to QUEENDOM APARTMENT!',
+        'No strangers allowed in this complex!',
+        'Watch out for kids on kickboards!',
+        'You will never pass QUEENDOM!',
+        'English only in this luxury zone!'
+      ];
+
+      // Stage 2 레전드 아파트 상수 및 상태 (총 28개)
+      const LEGEND_TARGET_COUNT = 28;
+      const LEGEND_MAX_ON_SCREEN = 5;
+      let legendTotalDestroyed = 0;
+      let legendTotalSpawned = 0;
+      let legendSpawnCooldown = 0;
+
+      let boss = null;
+      let platforms = [];
+      let projectiles = [];
+      let hazards = [];
+      let legendSlimes = [];
+      let particles = [];
+
+      // 입력 상태
+      const keys = {
+        left: false,
+        right: false,
+        up: false,
+        attack: false
+      };
+      let tapLeftTimer = 0;
+      let tapRightTimer = 0;
+
+      function showOverlay(overlayEl) {
+        hideAllOverlays();
+        if (overlayEl) {
+          overlayEl.classList.remove('overlay-hidden');
+        }
+      }
+
+      function hideAllOverlays() {
+        [titleOverlay, stageTransitionOverlay, endOverlay].forEach(el => {
+          el.classList.add('overlay-hidden');
+        });
+      }
+
+      // ==========================================
+      // 6. 스테이지 초기화
+      // ==========================================
+      function resetPlayerPosition(fullHeal = false) {
+        player.x = 100;
+        player.y = GROUND_Y - player.h;
+        player.vx = 0;
+        player.vy = 0;
+        player.onGround = true;
+        player.facing = 1;
+        player.invuln = 0;
+        player.attackCooldown = 0;
+        if (fullHeal) {
+          player.hp = player.maxHp;
+        } else {
+          player.hp = Math.min(player.maxHp, player.hp + 35);
+        }
+      }
+
+      function setupStage(stageNum) {
+        stopRomanticBGM();
+        if (romanticSceneWrapper) romanticSceneWrapper.classList.add('hidden');
+        hugHearts = [];
+        victoryLockTimer = 0;
+        rescueSceneTimer = 0;
+        rescuedJuchaeng = null;
+        currentStage = stageNum;
+        projectiles = [];
+        hazards = [];
+        legendSlimes = [];
+        particles = [];
+        platforms = [];
+        boss = null;
+
+        if (stageNum === 1) {
+          // Stage 1: 퀸덤아파트 (영어 대사 + 킥보드/자전거 초등학생)
+          resetPlayerPosition(true);
+          platforms = [
+            { x: 220, y: 365, w: 130, h: 16 },
+            { x: 410, y: 315, w: 130, h: 16 }
+          ];
+          boss = {
+            name: '퀸덤아파트 (QUEENDOM APT)',
+            x: 670,
+            y: GROUND_Y - 270,
+            w: 210,
+            h: 270,
+            hp: 180,
+            maxHp: 180,
+            hitFlash: 0,
+            spawnTimer: 70,
+            quoteIndex: 0,
+            quoteTimer: 0,
+            currentQuote: QUEENDOM_ENGLISH_LINES[0],
+            colorMain: '#d97706',
+            colorAccent: '#fef3c7'
+          };
+        } else if (stageNum === 2) {
+          // Stage 2: 레전드 아파트 (분열 없이 총 28개 몸체가 순차 등장, 1~2방에 경쾌하게 격파)
+          resetPlayerPosition(false);
+          platforms = [
+            { x: 180, y: 365, w: 150, h: 16 },
+            { x: 410, y: 305, w: 150, h: 16 },
+            { x: 640, y: 365, w: 150, h: 16 }
+          ];
+          legendTotalDestroyed = 0;
+          legendTotalSpawned = 0;
+          legendSpawnCooldown = 0;
+
+          // 시작 시 우측 아파트 단지에 4개 동 우선 배치
+          for (let i = 0; i < 4; i++) {
+            spawnLegendApartmentUnit(540 + i * 95);
+          }
+        } else if (stageNum === 3) {
+          // Stage 3: 부미아 (부암미주아파트) + 꼭대기 주챙이
+          resetPlayerPosition(false);
+          platforms = [
+            { x: 170, y: 375, w: 130, h: 16 },
+            { x: 350, y: 305, w: 130, h: 16 },
+            { x: 520, y: 240, w: 130, h: 16 }
+          ];
+          boss = {
+            name: '부미아 (부암미주아파트)',
+            x: 675,
+            y: GROUND_Y - 330,
+            w: 225,
+            h: 330,
+            hp: 260,
+            maxHp: 260,
+            hitFlash: 0,
+            attackTimer: 80,
+            phase: 1,
+            colorMain: '#dc2626',
+            colorAccent: '#fee2e2'
+          };
+        }
+
+        gameState = STATE.PLAYING;
+        hideAllOverlays();
+      }
+
+      // ==========================================
+      // 7. 액션 함수 (점프, 공격, 파티클)
+      // ==========================================
+      function triggerJump() {
+        if (gameState !== STATE.PLAYING) return;
+        if (player.onGround) {
+          player.vy = player.jumpPower;
+          player.onGround = false;
+          SFX.jump();
+          spawnParticles(player.x + player.w / 2, player.y + player.h, '#e2e8f0', 6);
+        }
+      }
+
+      function triggerAttack() {
+        if (gameState !== STATE.PLAYING) return;
+        if (player.attackCooldown > 0) return;
+
+        player.attackCooldown = 16;
+        player.attackAnim = 12;
+        SFX.shoot();
+
+        projectiles.push({
+          x: player.facing > 0 ? player.x + player.w : player.x - 26,
+          y: player.y + 20,
+          w: 28,
+          h: 18,
+          vx: player.facing * 11.5,
+          life: 65,
+          rotation: 0
+        });
+      }
+
+      function spawnParticles(x, y, color, count = 10) {
+        for (let i = 0; i < count; i++) {
+          particles.push({
+            x,
+            y,
+            vx: (Math.random() - 0.5) * 7,
+            vy: (Math.random() - 0.8) * 6,
+            size: 3 + Math.random() * 4,
+            color,
+            life: 22 + Math.random() * 14
+          });
+        }
+      }
+
+      function damagePlayer(amount) {
+        if (player.invuln > 0 || gameState !== STATE.PLAYING) return;
+        player.hp = Math.max(0, player.hp - amount);
+        player.invuln = 55;
+        screenShake = 10;
+        SFX.hurt();
+        spawnParticles(player.x + player.w / 2, player.y + player.h / 2, '#f43f5e', 14);
+
+        if (player.hp <= 0) {
+          stopRomanticBGM();
+          if (romanticSceneWrapper) romanticSceneWrapper.classList.add('hidden');
+          gameState = STATE.GAMEOVER;
+          document.getElementById('endEmoji').textContent = '😵';
+          document.getElementById('endTitle').textContent = '아파트 경비 시스템에 제압당했다!';
+          document.getElementById('endSubtitle').textContent = 'HP가 모두 소진되었습니다. 다시 도전해서 주챙이를 구출해주세요!';
+          document.getElementById('endDialogueBox').innerHTML = `
+            <div class="text-rose-300 font-bold">🏢 아파트 괴물: "크하하! 주챙이는 계속 이 옥상에 갇혀 있을 것이다!"</div>
+            <div class="text-amber-300 font-bold">👧 혜챙이: "으윽... 포기할 수 없어! 다시 한 번 도전하자!"</div>
+          `;
+          showOverlay(endOverlay);
+        }
+      }
+
+      // ==========================================
+      // 8. 스테이지별 업데이트 로직
+      // ==========================================
+      function rectsOverlap(a, b) {
+        return (
+          a.x < b.x + b.w &&
+          a.x + a.w > b.x &&
+          a.y < b.y + b.h &&
+          a.y + a.h > b.y
+        );
+      }
+
+      function updatePlayer() {
+        let moveDir = 0;
+        if (keys.left || tapLeftTimer > 0) moveDir -= 1;
+        if (keys.right || tapRightTimer > 0) moveDir += 1;
+
+        if (tapLeftTimer > 0) tapLeftTimer--;
+        if (tapRightTimer > 0) tapRightTimer--;
+
+        if (moveDir !== 0) {
+          player.vx = moveDir * player.speed;
+          player.facing = moveDir;
+          player.walkFrame++;
+        } else {
+          player.vx *= 0.72;
+          if (Math.abs(player.vx) < 0.2) player.vx = 0;
+        }
+
+        if (keys.up) triggerJump();
+        if (keys.attack) triggerAttack();
+
+        if (player.attackCooldown > 0) player.attackCooldown--;
+        if (player.attackAnim > 0) player.attackAnim--;
+        if (player.invuln > 0) player.invuln--;
+
+        const prevBottom = player.y + player.h;
+        player.x += player.vx;
+        player.vy += player.gravity;
+        player.y += player.vy;
+
+        // 화면 좌우 경계
+        if (player.x < 12) player.x = 12;
+        if (player.x + player.w > W - 12) player.x = W - 12 - player.w;
+
+        // 발판 착지 판정 (위에서 아래로 떨어질 때만)
+        player.onGround = false;
+        if (player.vy >= 0) {
+          for (const plat of platforms) {
+            if (
+              player.x + player.w - 8 > plat.x &&
+              player.x + 8 < plat.x + plat.w &&
+              prevBottom <= plat.y + 8 &&
+              player.y + player.h >= plat.y
+            ) {
+              player.y = plat.y - player.h;
+              player.vy = 0;
+              player.onGround = true;
+            }
+          }
+        }
+
+        // 바닥 충돌
+        if (player.y + player.h >= GROUND_Y) {
+          player.y = GROUND_Y - player.h;
+          player.vy = 0;
+          player.onGround = true;
+        }
+      }
+
+      function updateProjectiles() {
+        for (let i = projectiles.length - 1; i >= 0; i--) {
+          const p = projectiles[i];
+          p.x += p.vx;
+          p.rotation += 0.35;
+          p.life--;
+
+          if (p.life <= 0 || p.x < -40 || p.x > W + 40) {
+            projectiles.splice(i, 1);
+            continue;
+          }
+
+          // Stage 1 & 3 보스 피격 판정
+          if ((currentStage === 1 || currentStage === 3) && boss && rectsOverlap(p, boss)) {
+            boss.hp -= 10;
+            boss.hitFlash = 6;
+            SFX.hit();
+            spawnParticles(p.x + p.w / 2, p.y + p.h / 2, '#fbbf24', 8);
+            projectiles.splice(i, 1);
+
+            if (boss.hp <= 0) {
+              handleStageClear();
+              return;
+            }
+            continue;
+          }
+
+          // Stage 2 레전드 아파트 몸체 피격 판정
+          if (currentStage === 2) {
+            for (let j = legendSlimes.length - 1; j >= 0; j--) {
+              const s = legendSlimes[j];
+              if (rectsOverlap(p, s)) {
+                s.hp -= 10;
+                s.hitFlash = 6;
+                SFX.hit();
+                spawnParticles(p.x + p.w / 2, p.y + p.h / 2, '#c084fc', 8);
+                projectiles.splice(i, 1);
+
+                if (s.hp <= 0) {
+                  handleLegendDefeat(j);
+                }
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      // Stage 2 레전드 아파트 개별 동 생성 (총 28개 한도 내)
+      function spawnLegendApartmentUnit(customX = null) {
+        if (legendTotalSpawned >= LEGEND_TARGET_COUNT) return;
+        legendTotalSpawned++;
+        const unitNumber = legendTotalSpawned; // 101동 ~ 128동 번호 부여
+        const w = 64;
+        const h = 84;
+        const spawnX = customX !== null ? customX : W - w - 26;
+
+        legendSlimes.push({
+          unitNumber,
+          x: spawnX,
+          y: GROUND_Y - h,
+          w,
+          h,
+          vx: -(1.35 + (unitNumber % 3) * 0.25), // 부드럽고 예측 가능한 이동 속도
+          vy: 0,
+          hp: 10, // 슬리퍼 샷 1방에 경쾌하게 격파!
+          maxHp: 10,
+          hitFlash: 0,
+          hopTimer: 55 + (unitNumber % 4) * 20
+        });
+      }
+
+      // Stage 2 레전드 아파트 1개 몸체 격파 처리 (분열 없음, 28 -> 27 -> ... -> 0)
+      function handleLegendDefeat(index) {
+        const dead = legendSlimes[index];
+        legendSlimes.splice(index, 1);
+        legendTotalDestroyed++;
+        spawnParticles(dead.x + dead.w / 2, dead.y + dead.h / 2, '#c084fc', 12);
+
+        // 남은 스폰 물량이 있으면 다음 아파트 동을 1개 보충
+        if (legendTotalSpawned < LEGEND_TARGET_COUNT && legendSlimes.length < LEGEND_MAX_ON_SCREEN) {
+          spawnLegendApartmentUnit();
+        }
+
+        // 총 28개 모두 물리치면 스테이지 2 클리어!
+        if (legendTotalDestroyed >= LEGEND_TARGET_COUNT && legendSlimes.length === 0) {
+          handleStageClear();
+        }
+      }
+
+      function updateStage1() {
+        if (!boss) return;
+        if (boss.hitFlash > 0) boss.hitFlash--;
+
+        // 영어 대사 순환
+        boss.quoteTimer++;
+        if (boss.quoteTimer > 155) {
+          boss.quoteTimer = 0;
+          boss.quoteIndex = (boss.quoteIndex + 1) % QUEENDOM_ENGLISH_LINES.length;
+          boss.currentQuote = QUEENDOM_ENGLISH_LINES[boss.quoteIndex];
+        }
+
+        // 킥보드 & 자전거 초등학생 소환
+        boss.spawnTimer--;
+        if (boss.spawnTimer <= 0) {
+          boss.spawnTimer = 95 + Math.floor(Math.random() * 45);
+          const isBike = Math.random() > 0.5;
+          hazards.push({
+            type: isBike ? 'bike' : 'kickboard',
+            x: boss.x - 20,
+            y: GROUND_Y - (isBike ? 48 : 44),
+            w: isBike ? 52 : 42,
+            h: isBike ? 48 : 44,
+            vx: isBike ? -5.2 : -4.2,
+            vy: 0
+          });
+        }
+
+        for (let i = hazards.length - 1; i >= 0; i--) {
+          const h = hazards[i];
+          h.x += h.vx;
+          if (h.x + h.w < -40) {
+            hazards.splice(i, 1);
+            continue;
+          }
+          if (rectsOverlap(player, h)) {
+            damagePlayer(18);
+          }
+        }
+      }
+
+      function updateStage2() {
+        // 화면에 표시된 아파트 동이 최대치 미만이고 남은 물량이 있으면 순차 보충
+        if (legendTotalSpawned < LEGEND_TARGET_COUNT && legendSlimes.length < LEGEND_MAX_ON_SCREEN) {
+          legendSpawnCooldown--;
+          if (legendSpawnCooldown <= 0) {
+            spawnLegendApartmentUnit();
+            legendSpawnCooldown = 48; // 약 0.8초 간격으로 쾌적하게 등장
+          }
+        }
+
+        for (let i = 0; i < legendSlimes.length; i++) {
+          const s = legendSlimes[i];
+          if (s.hitFlash > 0) s.hitFlash--;
+
+          s.x += s.vx;
+          s.vy += 0.52;
+          s.y += s.vy;
+
+          // 좌우 벽 반사 (일정한 속도로 왕복)
+          if (s.x < 18) {
+            s.x = 18;
+            s.vx = Math.abs(s.vx);
+          } else if (s.x + s.w > W - 18) {
+            s.x = W - 18 - s.w;
+            s.vx = -Math.abs(s.vx);
+          }
+
+          // 착지 및 가벼운 점프
+          if (s.y + s.h >= GROUND_Y) {
+            s.y = GROUND_Y - s.h;
+            s.vy = 0;
+            s.hopTimer--;
+            if (s.hopTimer <= 0) {
+              s.vy = -7.2; // 너무 높지 않게 가벼운 점프
+              s.hopTimer = 75 + Math.floor(Math.random() * 45);
+            }
+          }
+
+          if (rectsOverlap(player, s)) {
+            damagePlayer(10); // 접촉 데미지도 완화하여 쾌적한 난이도 유지
+          }
+        }
+      }
+
+      function updateStage3() {
+        if (!boss) return;
+        if (boss.hitFlash > 0) boss.hitFlash--;
+
+        boss.attackTimer--;
+        if (boss.attackTimer <= 0) {
+          boss.attackTimer = boss.hp < 130 ? 68 : 88;
+          if (Math.random() < 0.55) {
+            // 지상 충격파
+            hazards.push({
+              type: 'shockwave',
+              x: boss.x - 16,
+              y: GROUND_Y - 30,
+              w: 36,
+              h: 30,
+              vx: -5.6,
+              vy: 0
+            });
+          } else {
+            // 옥상 낙하 화분
+            hazards.push({
+              type: 'pot',
+              x: Math.max(60, Math.min(620, player.x + (Math.random() - 0.5) * 140)),
+              y: -30,
+              w: 30,
+              h: 30,
+              vx: 0,
+              vy: 5.2
+            });
+          }
+        }
+
+        for (let i = hazards.length - 1; i >= 0; i--) {
+          const h = hazards[i];
+          h.x += h.vx;
+          h.y += h.vy;
+
+          if (h.x + h.w < -40 || h.y > GROUND_Y + 20) {
+            hazards.splice(i, 1);
+            continue;
+          }
+          if (rectsOverlap(player, h)) {
+            damagePlayer(20);
+            if (h.type === 'pot') {
+              spawnParticles(h.x + 15, h.y + 15, '#fb923c', 10);
+              hazards.splice(i, 1);
+            }
+          }
+        }
+      }
+
+      function handleStageClear() {
+        if (currentStage === 1) {
+          SFX.stageClear();
+          gameState = STATE.TRANSITION;
+          document.getElementById('transitionBadge').textContent = 'STAGE 1 CLEAR!';
+          document.getElementById('transitionTitle').textContent = '퀸덤아파트 격파!';
+          document.getElementById('transitionDesc').textContent =
+            '혜챙이: "영어로 아무리 소리쳐도 내 슬리퍼 파동은 못 막지! 다음은 레전드 아파트다!"';
+          nextStageBtn.textContent = '2스테이지: 레전드 아파트로 돌격! ➔';
+          showOverlay(stageTransitionOverlay);
+        } else if (currentStage === 2) {
+          SFX.stageClear();
+          gameState = STATE.TRANSITION;
+          document.getElementById('transitionBadge').textContent = 'STAGE 2 CLEAR!';
+          document.getElementById('transitionTitle').textContent = '레전드 아파트 28개 몸체 완전 격파!';
+          document.getElementById('transitionDesc').textContent =
+            '혜챙이: "레전드 아파트 28개 동을 모두 물리쳤어! 이제 주챙이가 갇혀 있는 마지막 부미아로 가자!"';
+          nextStageBtn.textContent = '최종 스테이지: 부미아로 돌격! ➔';
+          showOverlay(stageTransitionOverlay);
+        } else if (currentStage === 3) {
+          // 1) 부미아 괴물 격파 즉시 필드 위에서 주챙이 구출 및 포옹 시퀀스 시작!
+          SFX.victory();
+          gameState = 'RESCUE_CUTSCENE';
+          rescueSceneTimer = 0;
+          victoryLockTimer = 150; // 엔딩 직후 Space/Enter 연타로 1스테이지로 돌아가는 현상 방지
+          hazards = [];
+          projectiles = [];
+          keys.left = false;
+          keys.right = false;
+          keys.up = false;
+          keys.attack = false;
+
+          // 부미아 옥상 위치에서 주챙이가 지상으로 내려와 혜챙이와 만나는 좌표 설정
+          const startJx = boss ? boss.x + boss.w / 2 - 22 : 740;
+          const startJy = boss ? boss.y - 54 : 120;
+          rescuedJuchaeng = {
+            x: startJx,
+            y: startJy,
+            w: 44,
+            h: 56
+          };
+          if (boss) {
+            spawnParticles(boss.x + boss.w / 2, boss.y + boss.h / 2, '#fbbf24', 32);
+            spawnParticles(boss.x + boss.w / 2, boss.y + boss.h / 3, '#fb7185', 24);
+          }
+          boss = null;
+        }
+      }
+
+      function showFinalVictoryOverlay() {
+        gameState = STATE.VICTORY;
+        hugHearts = [];
+        if (romanticSceneWrapper) romanticSceneWrapper.classList.remove('hidden');
+        document.getElementById('endEmoji').textContent = '💕';
+        document.getElementById('endTitle').textContent = '주챙이 구출 성공!!';
+        document.getElementById('endSubtitle').textContent =
+          '부미아 괴물을 물리치고 옥상에 갇혀 있던 주챙이를 무사히 구출했습니다!';
+        document.getElementById('endDialogueBox').innerHTML = `
+          <div class="text-pink-300 font-bold text-center text-sm sm:text-base">👧👦 혜챙이 & 주챙이: "와이~~~~!! 드디어 만났다!! 💕"</div>
+          <div class="text-sky-300 font-bold">👦 주챙이: "혜챙아! 진짜 구하러 와줬구나! 고마워 ㅠㅠ"</div>
+          <div class="text-amber-300 font-bold">👧 혜챙이: "당연하지! 이제 함께 이 아파트 단지에서 탈출하자!"</div>
+        `;
+        showOverlay(endOverlay);
+      }
+
+      function updateRescueCutscene() {
+        rescueSceneTimer++;
+        const meetX = W / 2;
+        const groundTop = GROUND_Y - player.h;
+
+        // 혜챙이와 주챙이가 화면 중앙으로 달려와 서로 마주봄
+        const targetPlayerX = meetX - 30;
+        const targetJuchaengX = meetX - 10;
+
+        player.x += (targetPlayerX - player.x) * 0.08;
+        player.y += (groundTop - player.y) * 0.12;
+        player.facing = 1;
+        player.walkFrame++;
+
+        if (rescuedJuchaeng) {
+          rescuedJuchaeng.x += (targetJuchaengX - rescuedJuchaeng.x) * 0.08;
+          rescuedJuchaeng.y += (groundTop - rescuedJuchaeng.y) * 0.09;
+        }
+
+        // 두 캐릭터가 가까이 모이면 하트 파티클 방출
+        if (rescueSceneTimer > 45 && rescueSceneTimer % 10 === 0) {
+          spawnParticles(meetX, groundTop - 10, '#fb7185', 5);
+        }
+
+        // 약 2.8초(170프레임) 동안 필드 포옹 & "와이~~~~ 💕" 모션을 충분히 보여준 뒤 최종 엔딩 카드 표시
+        if (rescueSceneTimer >= 170) {
+          showFinalVictoryOverlay();
+        }
+      }
+
+      function updateParticles() {
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const pt = particles[i];
+          pt.x += pt.vx;
+          pt.y += pt.vy;
+          pt.vy += 0.25;
+          pt.life--;
+          if (pt.life <= 0) particles.splice(i, 1);
+        }
+      }
+
+      // ==========================================
+      // 9. 렌더링 함수
+      // ==========================================
+      function drawBackground() {
+        // 스테이지별 하늘 그라데이션
+        const grad = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+        if (currentStage === 1) {
+          grad.addColorStop(0, '#0284c7');
+          grad.addColorStop(1, '#bae6fd');
+        } else if (currentStage === 2) {
+          grad.addColorStop(0, '#3b0764');
+          grad.addColorStop(1, '#7e22ce');
+        } else {
+          grad.addColorStop(0, '#450a0a');
+          grad.addColorStop(1, '#ea580c');
+        }
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, W, GROUND_Y);
+
+        // 원경 도시 실루엣
+        ctx.fillStyle = currentStage === 1 ? 'rgba(15, 23, 42, 0.14)' : 'rgba(15, 23, 42, 0.35)';
+        for (let i = 0; i < 10; i++) {
+          const bx = i * 105;
+          const bh = 110 + ((i * 37) % 120);
+          ctx.fillRect(bx, GROUND_Y - bh, 85, bh);
+        }
+
+        // 바닥 도로 & 보도블록
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(0, GROUND_Y, W, 8);
+
+        // 도로 중앙선
+        ctx.fillStyle = '#facc15';
+        for (let x = 20; x < W; x += 80) {
+          ctx.fillRect(x, GROUND_Y + 34, 44, 6);
+        }
+
+        // 외벽 공중 발판
+        for (const plat of platforms) {
+          ctx.fillStyle = '#475569';
+          ctx.beginPath();
+          ctx.roundRect(plat.x, plat.y, plat.w, plat.h, 6);
+          ctx.fill();
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      }
+
+      function drawApartmentMonster(b, isBumia = false) {
+        ctx.save();
+        const shakeX = b.hitFlash > 0 ? (Math.random() - 0.5) * 8 : 0;
+        const x = b.x + shakeX;
+        const y = b.y;
+
+        // 아파트 본체
+        ctx.fillStyle = b.hitFlash > 0 ? '#ffffff' : b.colorMain;
+        ctx.beginPath();
+        ctx.roundRect(x, y, b.w, b.h, [12, 12, 0, 0]);
+        ctx.fill();
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // 아파트 간판
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(x + 14, y + 12, b.w - 28, 28);
+        ctx.fillStyle = '#fde047';
+        ctx.font = 'bold 14px "Noto Sans KR", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(isBumia ? '부암미주아파트 (부미아)' : 'QUEENDOM APT', x + b.w / 2, y + 31);
+
+        // 창문 그리드
+        const cols = 4;
+        const rows = isBumia ? 5 : 4;
+        const winW = 28;
+        const winH = 26;
+        const gapX = (b.w - cols * winW) / (cols + 1);
+        const gapY = 14;
+
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const wx = x + gapX + c * (winW + gapX);
+            const wy = y + 52 + r * (winH + gapY);
+            ctx.fillStyle = (r + c) % 2 === 0 ? '#fef08a' : '#38bdf8';
+            ctx.fillRect(wx, wy, winW, winH);
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(wx, wy, winW, winH);
+          }
+        }
+
+        // 괴물 눈 & 입
+        const eyeY = y + b.h - 72;
+        ctx.fillStyle = '#ef4444';
+        ctx.beginPath();
+        ctx.arc(x + b.w * 0.32, eyeY, 14, 0, Math.PI * 2);
+        ctx.arc(x + b.w * 0.68, eyeY, 14, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath();
+        ctx.arc(x + b.w * 0.32 - 3, eyeY, 5, 0, Math.PI * 2);
+        ctx.arc(x + b.w * 0.68 - 3, eyeY, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 이빨 입
+        ctx.fillStyle = '#090d16';
+        ctx.fillRect(x + 36, eyeY + 22, b.w - 72, 26);
+        ctx.fillStyle = '#ffffff';
+        for (let tx = x + 42; tx < x + b.w - 46; tx += 18) {
+          ctx.beginPath();
+          ctx.moveTo(tx, eyeY + 22);
+          ctx.lineTo(tx + 8, eyeY + 34);
+          ctx.lineTo(tx + 16, eyeY + 22);
+          ctx.fill();
+        }
+
+        // Stage 1 영어 말풍선
+        if (!isBumia && b.currentQuote) {
+          const bw = 320;
+          const bh = 46;
+          const bx = Math.max(20, x - 140);
+          const by = Math.max(66, y - 54);
+
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.roundRect(bx, by, bw, bh, 14);
+          ctx.fill();
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+
+          ctx.fillStyle = '#0f172a';
+          ctx.font = 'bold 13px "Noto Sans KR", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(b.currentQuote, bx + bw / 2, by + 28);
+        }
+
+        // Stage 3 부미아 꼭대기 옥상 철창 & 주챙이
+        if (isBumia) {
+          const cageW = 76;
+          const cageH = 66;
+          const cx = x + b.w / 2 - cageW / 2;
+          const cy = y - cageH;
+
+          // 주챙이 캐릭터 그리기
+          drawJuchaengSprite(ctx, cx + 14, cy + 8, 48, 54, frameCount);
+
+          // 철창 창살
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 3;
+          ctx.strokeRect(cx, cy, cageW, cageH);
+          for (let barX = cx + 15; barX < cx + cageW; barX += 15) {
+            ctx.beginPath();
+            ctx.moveTo(barX, cy);
+            ctx.lineTo(barX, cy + cageH);
+            ctx.stroke();
+          }
+
+          // "살려줘!" 말풍선
+          ctx.fillStyle = '#ecfdf5';
+          ctx.beginPath();
+          ctx.roundRect(cx - 48, cy - 34, 172, 26, 10);
+          ctx.fill();
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          ctx.fillStyle = '#065f46';
+          ctx.font = 'bold 12px "Noto Sans KR", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('주챙이: "혜챙아 살려줘!!"', cx + cageW / 2, cy - 17);
+        }
+
+        ctx.restore();
+      }
+
+      function drawHazards() {
+        for (const h of hazards) {
+          ctx.save();
+          if (h.type === 'kickboard' || h.type === 'bike') {
+            // 바퀴
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(h.x + 10, h.y + h.h - 6, 7, 0, Math.PI * 2);
+            ctx.arc(h.x + h.w - 10, h.y + h.h - 6, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 탈것 프레임
+            ctx.strokeStyle = h.type === 'bike' ? '#3b82f6' : '#f43f5e';
+            ctx.lineWidth = 3.5;
+            ctx.beginPath();
+            ctx.moveTo(h.x + 10, h.y + h.h - 6);
+            ctx.lineTo(h.x + h.w - 10, h.y + h.h - 6);
+            ctx.lineTo(h.x + 16, h.y + 8);
+            ctx.stroke();
+
+            // 초등학생 캐릭터
+            ctx.fillStyle = '#fde68a';
+            ctx.beginPath();
+            ctx.arc(h.x + 22, h.y + 12, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#facc15'; // 안전모
+            ctx.beginPath();
+            ctx.arc(h.x + 22, h.y + 10, 8.5, Math.PI, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = h.type === 'bike' ? '#10b981' : '#fb7185';
+            ctx.fillRect(h.x + 16, h.y + 20, 13, 14);
+          } else if (h.type === 'shockwave') {
+            ctx.fillStyle = '#f97316';
+            ctx.beginPath();
+            ctx.moveTo(h.x, h.y + h.h);
+            ctx.lineTo(h.x + h.w / 2, h.y);
+            ctx.lineTo(h.x + h.w, h.y + h.h);
+            ctx.closePath();
+            ctx.fill();
+          } else if (h.type === 'pot') {
+            ctx.fillStyle = '#b45309';
+            ctx.fillRect(h.x + 4, h.y + 10, 22, 20);
+            ctx.fillStyle = '#22c55e';
+            ctx.beginPath();
+            ctx.arc(h.x + 15, h.y + 9, 10, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+      }
+
+      function drawLegendSlimes() {
+        for (const s of legendSlimes) {
+          ctx.save();
+          ctx.fillStyle = s.hitFlash > 0 ? '#ffffff' : '#7e22ce';
+          ctx.beginPath();
+          ctx.roundRect(s.x, s.y, s.w, s.h, 10);
+          ctx.fill();
+          ctx.strokeStyle = '#f3e8ff';
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+
+          // 아파트 동 번호 라벨 (101동 ~ 128동)
+          ctx.fillStyle = '#3b0764';
+          ctx.fillRect(s.x + 8, s.y + 5, s.w - 16, 14);
+          ctx.fillStyle = '#fef08a';
+          ctx.font = 'bold 10px "Noto Sans KR", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${100 + s.unitNumber}동`, s.x + s.w / 2, s.y + 15);
+
+          // 미니 창문
+          ctx.fillStyle = '#fde047';
+          ctx.fillRect(s.x + 11, s.y + 24, 15, 13);
+          ctx.fillRect(s.x + s.w - 26, s.y + 24, 15, 13);
+
+          // 화난 눈
+          ctx.fillStyle = '#ef4444';
+          ctx.beginPath();
+          ctx.arc(s.x + s.w * 0.34, s.y + s.h * 0.62, 5, 0, Math.PI * 2);
+          ctx.arc(s.x + s.w * 0.66, s.y + s.h * 0.62, 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
+      function drawProjectiles() {
+        for (const p of projectiles) {
+          ctx.save();
+          ctx.translate(p.x + p.w / 2, p.y + p.h / 2);
+          ctx.rotate(p.rotation);
+
+          // 빛나는 슬리퍼 에너지 파동
+          ctx.fillStyle = '#38bdf8';
+          ctx.beginPath();
+          ctx.roundRect(-14, -8, 28, 16, 8);
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          ctx.restore();
+        }
+      }
+
+      function drawHUD() {
+        // 상단 반투명 바
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
+        ctx.fillRect(0, 0, W, 56);
+
+        // 혜챙이 HP 바
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 14px "Noto Sans KR", sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(`👧 혜챙이 HP`, 18, 22);
+
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(18, 28, 210, 16, 8);
+        ctx.fill();
+
+        const hpRatio = Math.max(0, player.hp / player.maxHp);
+        ctx.fillStyle = hpRatio > 0.4 ? '#22c55e' : '#ef4444';
+        ctx.beginPath();
+        ctx.roundRect(18, 28, 210 * hpRatio, 16, 8);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px "Noto Sans KR", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${player.hp} / ${player.maxHp}`, 123, 40);
+
+        // 중앙 스테이지 표시
+        const stageTitles = {
+          1: 'STAGE 1 : 퀸덤아파트',
+          2: 'STAGE 2 : 레전드 아파트 (총 28개)',
+          3: 'STAGE 3 : 부미아 (주챙이 구출)'
+        };
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = 'bold 16px "Jua", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(stageTitles[currentStage] || '', W / 2, 34);
+
+        // 우측 보스 HP / 남은 아파트 개수 표시
+        if ((currentStage === 1 || currentStage === 3) && boss) {
+          ctx.fillStyle = '#fca5a5';
+          ctx.font = 'bold 13px "Noto Sans KR", sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText(boss.name, W - 18, 22);
+
+          ctx.fillStyle = '#1e293b';
+          ctx.beginPath();
+          ctx.roundRect(W - 238, 28, 220, 16, 8);
+          ctx.fill();
+
+          const bossRatio = Math.max(0, boss.hp / boss.maxHp);
+          ctx.fillStyle = '#f43f5e';
+          ctx.beginPath();
+          ctx.roundRect(W - 238, 28, 220 * bossRatio, 16, 8);
+          ctx.fill();
+        } else if (currentStage === 2) {
+          const remaining = LEGEND_TARGET_COUNT - legendTotalDestroyed;
+          ctx.fillStyle = '#e9d5ff';
+          ctx.font = 'bold 15px "Jua", sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText(`남은 아파트: ${remaining} / ${LEGEND_TARGET_COUNT}개`, W - 18, 35);
+        }
+      }
+
+      function render() {
+        ctx.save();
+        if (screenShake > 0) {
+          ctx.translate((Math.random() - 0.5) * screenShake, (Math.random() - 0.5) * screenShake);
+          screenShake--;
+        }
+
+        drawBackground();
+
+        if (currentStage === 1 && boss) {
+          drawApartmentMonster(boss, false);
+          drawHazards();
+        } else if (currentStage === 2) {
+          drawLegendSlimes();
+        } else if (currentStage === 3 && boss) {
+          drawApartmentMonster(boss, true);
+          drawHazards();
+        }
+
+        drawProjectiles();
+
+        // 3단계 클리어 직후 필드 위 주챙이 구출 & 얼싸안기 컷신 렌더링
+        if (gameState === 'RESCUE_CUTSCENE' && rescuedJuchaeng) {
+          const hugBounce = rescueSceneTimer > 45 ? Math.abs(Math.sin(rescueSceneTimer * 0.16)) * -6 : 0;
+          drawHyechaengSprite(ctx, player.x, player.y + hugBounce, player.w, player.h, 1, player.walkFrame, 0);
+          drawJuchaengSprite(ctx, rescuedJuchaeng.x, rescuedJuchaeng.y + hugBounce, rescuedJuchaeng.w, rescuedJuchaeng.h, rescueSceneTimer);
+
+          if (rescueSceneTimer > 40) {
+            const cx = (player.x + rescuedJuchaeng.x) / 2 + 22;
+            const cy = player.y - 36 + hugBounce;
+            ctx.save();
+            ctx.fillStyle = '#fff1f2';
+            ctx.beginPath();
+            ctx.roundRect(cx - 115, cy - 22, 230, 36, 16);
+            ctx.fill();
+            ctx.strokeStyle = '#fb7185';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            ctx.fillStyle = '#e11d48';
+            ctx.font = 'bold 18px "Jua", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('혜챙 & 주챙: "와이~~~~ 💕"', cx, cy + 2);
+            ctx.restore();
+          }
+        } else {
+          // 무적 깜빡임 처리 후 혜챙이 그리기
+          if (player.invuln === 0 || Math.floor(player.invuln / 4) % 2 === 0) {
+            drawHyechaengSprite(ctx, player.x, player.y, player.w, player.h, player.facing, player.walkFrame, player.attackAnim);
+          }
+        }
+
+        // 파티클
+        for (const pt of particles) {
+          ctx.fillStyle = pt.color;
+          ctx.fillRect(pt.x, pt.y, pt.size, pt.size);
+        }
+
+        drawHUD();
+        ctx.restore();
+      }
+
+      // ==========================================
+      // 10. 메인 게임 루프
+      // ==========================================
+      function gameLoop() {
+        frameCount++;
+        if (victoryLockTimer > 0) victoryLockTimer--;
+
+        if (gameState === STATE.PLAYING) {
+          updatePlayer();
+          updateProjectiles();
+          if (currentStage === 1) updateStage1();
+          else if (currentStage === 2) updateStage2();
+          else if (currentStage === 3) updateStage3();
+          updateParticles();
+        } else if (gameState === 'RESCUE_CUTSCENE') {
+          updateRescueCutscene();
+          updateParticles();
+        }
+
+        render();
+        if (gameState === STATE.VICTORY) {
+          renderRomanticHugScene();
+        }
+        requestAnimationFrame(gameLoop);
+      }
+
+      // ==========================================
+      // 11. 버튼 & 키보드 이벤트 완벽 바인딩
+      // ==========================================
+      function bindButtonAction(btn, onPress, onRelease = null) {
+        if (!btn) return;
+
+        const handleStart = (e) => {
+          if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          initAudio();
+          btn.classList.add('is-pressed');
+          onPress();
+        };
+
+        const handleEnd = (e) => {
+          if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          btn.classList.remove('is-pressed');
+          if (onRelease) onRelease();
+        };
+
+        btn.addEventListener('pointerdown', handleStart);
+        btn.addEventListener('pointerup', handleEnd);
+        btn.addEventListener('pointerleave', handleEnd);
+        btn.addEventListener('pointercancel', handleEnd);
+
+        // 구형 브라우저/특정 웹뷰 호환용 click 이벤트
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          initAudio();
+          onPress();
+          if (onRelease) {
+            setTimeout(onRelease, 110);
+          }
+        });
+      }
+
+      // 시작 / 다음 스테이지 / 다시하기 버튼
+      bindButtonAction(startBtn, () => {
+        setupStage(1);
+        canvas.focus();
+      });
+
+      bindButtonAction(nextStageBtn, () => {
+        if (gameState === STATE.TRANSITION) {
+          setupStage(currentStage + 1);
+          canvas.focus();
+        }
+      });
+
+      bindButtonAction(restartBtn, () => {
+        if (victoryLockTimer > 0) return;
+        setupStage(1);
+        canvas.focus();
+      });
+
+      // 하단 이동 및 점프/공격 버튼 바인딩
+      bindButtonAction(
+        btnLeft,
+        () => {
+          keys.left = true;
+          tapLeftTimer = 11; // 짧은 클릭 시에도 한 걸음 부드럽게 이동
+        },
+        () => {
+          keys.left = false;
+        }
+      );
+
+      bindButtonAction(
+        btnRight,
+        () => {
+          keys.right = true;
+          tapRightTimer = 11; // 짧은 클릭 시에도 한 걸음 부드럽게 이동
+        },
+        () => {
+          keys.right = false;
+        }
+      );
+
+      bindButtonAction(
+        btnJump,
+        () => {
+          keys.up = true;
+          triggerJump();
+        },
+        () => {
+          keys.up = false;
+        }
+      );
+
+      bindButtonAction(
+        btnAttack,
+        () => {
+          keys.attack = true;
+          triggerAttack();
+        },
+        () => {
+          keys.attack = false;
+        }
+      );
+
+      // 음소거 토글 버튼
+      bindButtonAction(muteBtn, () => {
+        isMuted = !isMuted;
+        muteIcon.textContent = isMuted ? '🔇' : '🔊';
+        muteText.textContent = isMuted ? '효과음 OFF' : '효과음 ON';
+        if (isMuted) {
+          stopRomanticBGM();
+        } else if (gameState === STATE.VICTORY) {
+          startRomanticBGM();
+        }
+      });
+
+      // 키보드 이벤트
+      window.addEventListener('keydown', (e) => {
+        const code = e.code;
+        if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(code)) {
+          e.preventDefault();
+        }
+
+        if (gameState === STATE.TITLE && (code === 'Space' || code === 'Enter')) {
+          initAudio();
+          setupStage(1);
+          return;
+        }
+        if (gameState === STATE.TRANSITION && (code === 'Space' || code === 'Enter')) {
+          initAudio();
+          setupStage(currentStage + 1);
+          return;
+        }
+        if ((gameState === STATE.VICTORY || gameState === STATE.GAMEOVER) && (code === 'Space' || code === 'Enter')) {
+          if (victoryLockTimer > 0) return;
+          initAudio();
+          setupStage(1);
+          return;
+        }
+
+        if (code === 'ArrowLeft' || code === 'KeyA') keys.left = true;
+        if (code === 'ArrowRight' || code === 'KeyD') keys.right = true;
+        if (code === 'ArrowUp' || code === 'KeyW') {
+          keys.up = true;
+          triggerJump();
+        }
+        if (code === 'Space' || code === 'KeyZ' || code === 'KeyJ') {
+          keys.attack = true;
+          triggerAttack();
+        }
+      });
+
+      window.addEventListener('keyup', (e) => {
+        const code = e.code;
+        if (code === 'ArrowLeft' || code === 'KeyA') keys.left = false;
+        if (code === 'ArrowRight' || code === 'KeyD') keys.right = false;
+        if (code === 'ArrowUp' || code === 'KeyW') keys.up = false;
+        if (code === 'Space' || code === 'KeyZ' || code === 'KeyJ') keys.attack = false;
+      });
+
+      // 윈도우 로드 시 애니메이션 루프 시작
+      window.addEventListener('load', () => {
+        resizeCanvas();
+        gameLoop();
+      });
+    })();
+  </script>
+</body>
+</html>
